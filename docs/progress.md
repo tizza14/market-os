@@ -1,7 +1,7 @@
 # Market OS — 開發進度記錄
 
-**最後更新：** 2026-05-27  
-**當前狀態：** Wave 2 進行中（未完成）
+**最後更新：** 2026-05-27 00:26  
+**當前狀態：** Wave 2 Unit Test 驗收完成 ✅，端對端驗收待執行
 
 ---
 
@@ -64,7 +64,7 @@ src/
 
 ---
 
-### B. apps/api-gateway — 檔案已寫入，**尚未驗收** ⚠️
+### B. apps/api-gateway — Unit Test 驗收完成 ✅
 
 **已實作檔案：**
 
@@ -79,14 +79,34 @@ src/
 │   ├── health.ts                ✅ GET /api/health
 │   ├── market.ts                ✅ GET /api/market/latest、GET /api/market/klines
 │   ├── websocket.ts             ✅ /ws/market（ping/pong、connection limit）
-│   └── apiHandlers.spec.ts      ✅ 10 tests（含 Fastify inject）
+│   └── apiHandlers.spec.ts      ✅ 11 tests（含 Fastify inject）
 └── main.ts                      ✅ 完整啟動邏輯、graceful shutdown
 ```
 
-**⚠️ 尚未執行驗收（因 permissions 設定中斷）：**
-- [ ] `pnpm --filter api-gateway typecheck`
-- [ ] `pnpm --filter api-gateway test`
-- [ ] 端到端手動驗證（需 MongoDB + Redis）
+**Unit Tests：** `11 / 11 通過`
+
+```
+✓ src/handlers/apiHandlers.spec.ts (11 tests)
+```
+
+**全 Workspace 驗收結果：**
+
+```
+pnpm -r typecheck → 全綠（3 services）
+pnpm -r test      → 37 tests 全通過
+  market-data-service: 26/26
+  api-gateway:         11/11
+  frontend:            0/0（Wave 3 才實作）
+```
+
+**⏳ 端對端驗收待執行（需 MongoDB + Redis）：**
+- [ ] Binance WS 連線 log 出現
+- [ ] MongoDB `market_ticks` 持續累加，無重複 tradeId
+- [ ] MongoDB `klines` 每分鐘一根
+- [ ] Redis subscriber 收到訊息
+- [ ] 三個 REST endpoint 回應符合 schema
+- [ ] WebSocket 持續推送
+- [ ] Kill 後重啟，K 線從 MongoDB 恢復
 
 ---
 
@@ -110,6 +130,20 @@ export const SYMBOLS = { BTCUSDT: 'BTCUSDT' } as const;
 export * from './constants.js';
 ```
 
+### 3. api-gateway 缺少 @types/ws（Wave 2 發現）
+
+**問題：** `apps/api-gateway` 的 `devDependencies` 未包含 `@types/ws`，`websocket.ts` 無法取得 WebSocket 型別。
+
+**解法：** 加入 `"@types/ws": "8.5.12"` 至 api-gateway devDependencies，並為 `message` / `error` 事件參數加上明確型別（`Buffer | string`、`Error`）。
+
+### 4. frontend 無測試檔案導致 pnpm -r test 失敗（Wave 2 發現）
+
+**問題：** vitest 預設在找不到測試檔時 exit 1，造成 `pnpm -r test` 整體失敗。
+
+**解法：** 新增 `apps/frontend/vitest.config.ts` 設定 `passWithNoTests: true`。
+
+---
+
 ### 2. KlineAggregator 初始 volume 精度（Wave 2 發現）
 
 **問題：** `createKline()` 初始 volume 直接用 `tick.quantity`，未 normalize 到 8 位小數。
@@ -122,16 +156,10 @@ export * from './constants.js';
 
 ## 下一步：Wave 2 完成剩餘步驟
 
-### 立即要做（繼續目前 wave）
+### 立即要做（端對端驗收）
 
 ```bash
-# Step 1: typecheck
-pnpm --filter api-gateway typecheck
-
-# Step 2: unit tests
-pnpm --filter api-gateway test
-
-# Step 3: 手動端到端驗證（需先啟動 mongo + redis）
+# Step 1: 啟動 mongo + redis
 docker run -d -p 27017:27017 --name mongo mongo:7
 docker run -d -p 6379:6379 --name redis redis:7-alpine
 

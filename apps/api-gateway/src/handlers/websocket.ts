@@ -29,7 +29,7 @@ export function registerWebSocketRoutes(fastify: FastifyInstance, deps: WsDeps):
 
     deps.broadcast.on('market:update', onUpdate);
 
-    socket.on('message', (data) => {
+    socket.on('message', (data: Buffer | string) => {
       try {
         const msg = JSON.parse(data.toString()) as { type?: string };
         if (msg.type === WS_MESSAGE_TYPES.PING) {
@@ -46,7 +46,7 @@ export function registerWebSocketRoutes(fastify: FastifyInstance, deps: WsDeps):
       fastify.log.info({ totalConnections: connectionCount }, 'WS client disconnected');
     });
 
-    socket.on('error', (err) => {
+    socket.on('error', (err: Error) => {
       fastify.log.error({ err: err.message }, 'WS client error');
     });
 
