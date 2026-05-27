@@ -6,18 +6,28 @@ import { fetchKlines } from '../api/market';
 
 const WS_URL = import.meta.env['VITE_WS_URL'] ?? '/ws/market';
 
+export type KlineInterval = '1m' | '5m' | '15m' | '1h';
+
+const INTERVAL_MS: Record<KlineInterval, number> = {
+  '1m':  60_000,
+  '5m':  300_000,
+  '15m': 900_000,
+  '1h':  3_600_000,
+};
+
 export const useMarketStore = defineStore('market', () => {
   const symbol = ref('BTCUSDT');
   const latestTick = ref<MarketTick | null>(null);
   const klines = ref<Kline[]>([]);
   const connectionStatus = ref<'connected' | 'reconnecting' | 'disconnected'>('disconnected');
   const lastUpdated = ref<number | null>(null);
+  const selectedInterval = ref<KlineInterval>('1m');
 
   let ws: MarketWebSocket | null = null;
 
   async function loadKlines(): Promise<void> {
     try {
-      klines.value = await fetchKlines(100);
+      klines.value = await fetchKlines(100, selectedInterval.value);
     } catch {
       // silently fail — chart shows empty initially
     }
@@ -33,7 +43,9 @@ export const useMarketStore = defineStore('market', () => {
   }
 
   function updateLatestKline(tick: MarketTick): void {
-    const openTime = Math.floor(tick.eventTime / 60000) * 60000;
+    const intervalMs = INTERVAL_MS[selectedInterval.value];
+    const openTime = Math.floor(tick.eventTime / intervalMs) * intervalMs;
+    const closeTime = openTime + intervalMs - 1;
     const last = klines.value[klines.value.length - 1];
 
     if (!last || last.openTime !== openTime) {
@@ -41,7 +53,7 @@ export const useMarketStore = defineStore('market', () => {
         ...klines.value,
         {
           openTime,
-          closeTime: openTime + 59999,
+          closeTime,
           open: tick.price,
           high: tick.price,
           low: tick.price,
@@ -60,6 +72,11 @@ export const useMarketStore = defineStore('market', () => {
       };
       klines.value = [...klines.value.slice(0, -1), updated];
     }
+  }
+
+  async function setInterval(interval: KlineInterval): Promise<void> {
+    selectedInterval.value = interval;
+    await loadKlines();
   }
 
   function start(): void {
@@ -82,5 +99,5 @@ export const useMarketStore = defineStore('market', () => {
     ws = null;
   }
 
-  return { symbol, latestTick, klines, connectionStatus, lastUpdated, start, stop };
+  return { symbol, latestTick, klines, connectionStatus, lastUpdated, selectedInterval, setInterval, start, stop };
 });

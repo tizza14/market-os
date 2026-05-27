@@ -19,6 +19,7 @@ const CHART_COLORS = {
 const props = defineProps<{
   klines: Kline[];
   height?: number;
+  interval?: string;
 }>();
 
 const height = props.height ?? 480;
@@ -134,7 +135,11 @@ function buildOption(klines: Kline[]): echarts.EChartsOption {
 }
 
 function formatTime(ts: number): string {
-  return new Date(ts).toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' });
+  const d = new Date(ts);
+  if (props.interval === '1h') {
+    return d.toLocaleString('zh-TW', { hour12: false, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+  }
+  return d.toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' });
 }
 
 function renderChart(klines: Kline[]): void {
@@ -152,6 +157,7 @@ onMounted(() => {
 });
 
 watch(() => props.klines, (klines) => renderChart(klines), { deep: false });
+watch(() => props.interval, () => renderChart(props.klines));
 
 onUnmounted(() => {
   chart?.dispose();

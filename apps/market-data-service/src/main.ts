@@ -8,7 +8,7 @@ import { BinanceWebSocket } from './connectors/binanceWebSocket.js';
 import { TickRepository } from './repositories/tickRepository.js';
 import { KlineRepository } from './repositories/klineRepository.js';
 import { RedisPublisher } from './publishers/redisPublisher.js';
-import { SYMBOLS } from '@market-os/config';
+import { SYMBOLS, KLINE_INTERVAL_MS } from '@market-os/config';
 
 const EnvSchema = z.object({
   BINANCE_WS_URL: z.string().default('wss://stream.binance.com:9443/ws/btcusdt@trade'),
@@ -35,8 +35,10 @@ async function main(): Promise<void> {
   await klineRepo.ensureIndexes();
 
   const publisher = new RedisPublisher(env.REDIS_URL);
-  const aggregator = new KlineAggregator(klineRepo, logger);
-  await aggregator.initialize(SYMBOLS.BTCUSDT);
+  const aggregators = Object.entries(KLINE_INTERVAL_MS).map(
+    ([interval, ms]) => new KlineAggregator(interval, ms, klineRepo, logger),
+  );
+  await Promise.all(aggregators.map((a) => a.initialize(SYMBOLS.BTCUSDT)));
 
   let lastEventTime = 0;
 
@@ -59,20 +61,23 @@ async function main(): Promise<void> {
       }
       lastEventTime = Math.max(lastEventTime, tick.eventTime);
 
-      const [tickResult, klineResult, redisResult] = await Promise.allSettled([
+      const [tickResult, ...klineResults] = await Promise.allSettled([
         tickRepo.save(tick),
-        aggregator.processTick(tick),
-        publisher.publish(tick),
+        ...aggregators.map((a) => a.processTick(tick)),
       ]);
+      const redisResult = await Promise.allSettled([publisher.publish(tick)]);
 
       if (tickResult.status === 'rejected') {
         logger.error({ err: (tickResult.reason as Error).message, tradeId: tick.tradeId }, 'Tick save failed');
       }
-      if (klineResult.status === 'rejected') {
-        logger.error({ err: (klineResult.reason as Error).message }, 'Kline update failed');
+      for (const klineResult of klineResults) {
+        if (klineResult.status === 'rejected') {
+          logger.error({ err: (klineResult.reason as Error).message }, 'Kline update failed');
+        }
       }
-      if (redisResult.status === 'rejected') {
-        logger.warn({ err: (redisResult.reason as Error).message }, 'Redis publish failed');
+      const r = redisResult[0];
+      if (r?.status === 'rejected') {
+        logger.warn({ err: (r.reason as Error).message }, 'Redis publish failed');
       }
     },
   );

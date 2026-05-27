@@ -1,6 +1,5 @@
 import Decimal from 'decimal.js';
 import type { MarketTick } from '@market-os/shared-types';
-import { KLINE_INTERVALS } from '@market-os/config';
 import type { KlineRepository } from '../repositories/klineRepository.js';
 import type { Logger } from 'pino';
 
@@ -17,17 +16,17 @@ export interface KlineState {
   tradeCount: number;
 }
 
-export function calcOpenTime(eventTime: number): number {
-  return Math.floor(eventTime / 60000) * 60000;
+export function calcOpenTime(eventTime: number, intervalMs: number): number {
+  return Math.floor(eventTime / intervalMs) * intervalMs;
 }
 
-export function createKline(tick: MarketTick): KlineState {
-  const openTime = calcOpenTime(tick.eventTime);
+export function createKline(tick: MarketTick, interval: string, intervalMs: number): KlineState {
+  const openTime = calcOpenTime(tick.eventTime, intervalMs);
   return {
     symbol: tick.symbol,
-    interval: KLINE_INTERVALS.ONE_MINUTE,
+    interval,
     openTime,
-    closeTime: openTime + 59999,
+    closeTime: openTime + intervalMs - 1,
     open: tick.price,
     high: tick.price,
     low: tick.price,
@@ -51,10 +50,15 @@ export function updateKline(current: KlineState, tick: MarketTick): KlineState {
   };
 }
 
-export function aggregateTick(current: KlineState | null, tick: MarketTick): KlineState {
-  if (!current) return createKline(tick);
-  const openTime = calcOpenTime(tick.eventTime);
-  if (current.openTime !== openTime) return createKline(tick);
+export function aggregateTick(
+  current: KlineState | null,
+  tick: MarketTick,
+  interval: string,
+  intervalMs: number,
+): KlineState {
+  if (!current) return createKline(tick, interval, intervalMs);
+  const openTime = calcOpenTime(tick.eventTime, intervalMs);
+  if (current.openTime !== openTime) return createKline(tick, interval, intervalMs);
   return updateKline(current, tick);
 }
 
@@ -63,16 +67,18 @@ export class KlineAggregator {
   private initialized = false;
 
   constructor(
+    private readonly interval: string,
+    private readonly intervalMs: number,
     private readonly klineRepo: KlineRepository,
     private readonly logger: Logger,
   ) {}
 
   async initialize(symbol: string): Promise<void> {
-    const openTime = calcOpenTime(Date.now());
-    const existing = await this.klineRepo.findByOpenTime(symbol, KLINE_INTERVALS.ONE_MINUTE, openTime);
+    const openTime = calcOpenTime(Date.now(), this.intervalMs);
+    const existing = await this.klineRepo.findByOpenTime(symbol, this.interval, openTime);
     if (existing) {
       this.currentKline = existing;
-      this.logger.info({ openTime }, 'Resumed in-progress kline');
+      this.logger.info({ openTime, interval: this.interval }, 'Resumed in-progress kline');
     }
     this.initialized = true;
   }
@@ -81,7 +87,7 @@ export class KlineAggregator {
     if (!this.initialized) {
       await this.initialize(tick.symbol);
     }
-    this.currentKline = aggregateTick(this.currentKline, tick);
+    this.currentKline = aggregateTick(this.currentKline, tick, this.interval, this.intervalMs);
     await this.klineRepo.upsert(this.currentKline);
   }
 }
