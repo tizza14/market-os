@@ -9,6 +9,7 @@ import { TickRepository } from './repositories/tickRepository.js';
 import { KlineRepository } from './repositories/klineRepository.js';
 import { RedisPublisher } from './publishers/redisPublisher.js';
 import { SYMBOLS, KLINE_INTERVAL_MS } from '@market-os/config';
+import { backfillKlines } from './services/historicalDataService.js';
 
 const EnvSchema = z.object({
   BINANCE_WS_URL: z.string().default('wss://stream.binance.com:9443/ws/btcusdt@trade'),
@@ -39,6 +40,14 @@ async function main(): Promise<void> {
     ([interval, ms]) => new KlineAggregator(interval, ms, klineRepo, logger),
   );
   await Promise.all(aggregators.map((a) => a.initialize(SYMBOLS.BTCUSDT)));
+
+  logger.info('Starting historical data backfill');
+  await Promise.allSettled(
+    Object.keys(KLINE_INTERVAL_MS).map((interval) =>
+      backfillKlines(SYMBOLS.BTCUSDT, interval, klineRepo, logger),
+    ),
+  );
+  logger.info('Historical data backfill complete');
 
   let lastEventTime = 0;
 

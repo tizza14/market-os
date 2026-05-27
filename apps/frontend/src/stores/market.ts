@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import type { MarketTick, Kline } from '@market-os/shared-types';
+import type { MarketTick, Kline, IndicatorResult } from '@market-os/shared-types';
 import { MarketWebSocket } from '../services/marketWebSocket';
 import { fetchKlines } from '../api/market';
 
@@ -19,6 +19,7 @@ export const useMarketStore = defineStore('market', () => {
   const symbol = ref('BTCUSDT');
   const latestTick = ref<MarketTick | null>(null);
   const klines = ref<Kline[]>([]);
+  const indicators = ref<IndicatorResult | null>(null);
   const connectionStatus = ref<'connected' | 'reconnecting' | 'disconnected'>('disconnected');
   const lastUpdated = ref<number | null>(null);
   const selectedInterval = ref<KlineInterval>('1m');
@@ -27,7 +28,9 @@ export const useMarketStore = defineStore('market', () => {
 
   async function loadKlines(): Promise<void> {
     try {
-      klines.value = await fetchKlines(100, selectedInterval.value);
+      const res = await fetchKlines(100, selectedInterval.value);
+      klines.value = res.data;
+      indicators.value = res.indicators;
     } catch {
       // silently fail — chart shows empty initially
     }
@@ -99,5 +102,5 @@ export const useMarketStore = defineStore('market', () => {
     ws = null;
   }
 
-  return { symbol, latestTick, klines, connectionStatus, lastUpdated, selectedInterval, setInterval, start, stop };
+  return { symbol, latestTick, klines, indicators, connectionStatus, lastUpdated, selectedInterval, setInterval, start, stop };
 });

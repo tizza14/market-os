@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { KlinesQuerySchema } from '../schemas/queryParams.js';
 import { ERROR_CODES } from '@market-os/config';
 import type { Kline } from '@market-os/shared-types';
+import { calcIndicators } from '../services/indicatorService.js';
 
 export interface LatestTickDTO {
   symbol: string;
@@ -43,6 +44,8 @@ export function registerMarketRoutes(fastify: FastifyInstance, deps: MarketDeps)
 
     const { symbol, interval, limit } = result.data;
     const klines = await deps.findKlines(symbol, interval, limit);
-    return reply.send({ symbol, interval, data: klines });
+    const closes = klines.map((k) => parseFloat(k.close));
+    const indicators = calcIndicators(closes);
+    return reply.send({ symbol, interval, data: klines, indicators });
   });
 }

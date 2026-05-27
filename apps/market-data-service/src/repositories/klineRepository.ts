@@ -28,6 +28,43 @@ export class KlineRepository {
     return docs.reverse().map(docToKlineState);
   }
 
+  async findLatestOpenTime(symbol: string, interval: string): Promise<number | null> {
+    const doc = await this.col.findOne({ symbol, interval }, { sort: { openTime: -1 } });
+    return doc ? (doc['openTime'] as number) : null;
+  }
+
+  async countBySymbolInterval(symbol: string, interval: string): Promise<number> {
+    return this.col.countDocuments({ symbol, interval });
+  }
+
+  async bulkUpsert(klines: KlineState[]): Promise<void> {
+    if (klines.length === 0) return;
+    await this.col.bulkWrite(
+      klines.map((k) => ({
+        updateOne: {
+          filter: { symbol: k.symbol, interval: k.interval, openTime: k.openTime },
+          update: {
+            $set: {
+              symbol:     k.symbol,
+              interval:   k.interval,
+              openTime:   k.openTime,
+              closeTime:  k.closeTime,
+              open:       Decimal128.fromString(k.open),
+              close:      Decimal128.fromString(k.close),
+              high:       Decimal128.fromString(k.high),
+              low:        Decimal128.fromString(k.low),
+              volume:     Decimal128.fromString(k.volume),
+              tradeCount: k.tradeCount,
+              updatedAt:  new Date(),
+            },
+          },
+          upsert: true,
+        },
+      })),
+      { ordered: false },
+    );
+  }
+
   async upsert(kline: KlineState): Promise<void> {
     await this.col.updateOne(
       { symbol: kline.symbol, interval: kline.interval, openTime: kline.openTime },

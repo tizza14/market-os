@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import type { TwStockKline } from '@market-os/shared-types';
+import type { TwStockKline, IndicatorResult } from '@market-os/shared-types';
 
 const BASE = import.meta.env['VITE_API_BASE_URL'] ?? '/api';
 
@@ -9,6 +9,7 @@ interface KlinesResponse {
   companyName: string;
   industry: string;
   data: TwStockKline[];
+  indicators: IndicatorResult;
 }
 
 export const useTwStockStore = defineStore('twStock', () => {
@@ -17,6 +18,7 @@ export const useTwStockStore = defineStore('twStock', () => {
   const industry = ref('');
   const days = ref(120);
   const klines = ref<TwStockKline[]>([]);
+  const indicators = ref<IndicatorResult | null>(null);
   const loading = ref(false);
   const error = ref<string | null>(null);
 
@@ -28,6 +30,7 @@ export const useTwStockStore = defineStore('twStock', () => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = (await res.json()) as KlinesResponse;
       klines.value = json.data;
+      indicators.value = json.indicators;
       companyName.value = json.companyName;
       industry.value = json.industry;
     } catch (e) {
@@ -44,5 +47,5 @@ export const useTwStockStore = defineStore('twStock', () => {
     await fetchKlines();
   }
 
-  return { symbol, companyName, industry, days, klines, loading, error, fetchKlines, search };
+  return { symbol, companyName, industry, days, klines, indicators, loading, error, fetchKlines, search };
 });
