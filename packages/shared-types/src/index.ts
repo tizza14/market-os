@@ -18,6 +18,18 @@ export interface Kline {
   tradeCount: number;
 }
 
+export interface TwStockKline {
+  date: string;
+  stockId: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+  spread: number;
+  turnover: number;
+}
+
 export type WebSocketMessage =
   | { type: 'market:update'; data: MarketTick }
   | { type: 'market:error'; data: { code: string; message: string } }

@@ -5,8 +5,9 @@ import websocketPlugin from '@fastify/websocket';
 import { registerHealthRoutes, type HealthDeps } from './handlers/health.js';
 import { registerMarketRoutes, type MarketDeps } from './handlers/market.js';
 import { registerWebSocketRoutes, type WsDeps } from './handlers/websocket.js';
+import { registerTwStockRoutes, type TwStockDeps } from './handlers/twStock.js';
 
-export type AppDeps = HealthDeps & MarketDeps & WsDeps;
+export type AppDeps = HealthDeps & MarketDeps & WsDeps & TwStockDeps;
 
 export async function buildApp(deps: AppDeps, opts: { logger?: boolean } = {}): Promise<FastifyInstance> {
   const fastify = Fastify({ logger: opts.logger ?? true });
@@ -25,6 +26,7 @@ export async function buildApp(deps: AppDeps, opts: { logger?: boolean } = {}): 
   registerHealthRoutes(fastify, deps);
   registerMarketRoutes(fastify, deps);
   registerWebSocketRoutes(fastify, deps);
+  registerTwStockRoutes(fastify, deps);
 
   return fastify;
 }

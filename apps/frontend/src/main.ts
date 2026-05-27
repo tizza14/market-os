@@ -11,6 +11,10 @@ const router = createRouter({
       path: '/',
       component: () => import('./views/DashboardView.vue'),
     },
+    {
+      path: '/tw-stock',
+      component: () => import('./views/TwStockView.vue'),
+    },
   ],
 });
 

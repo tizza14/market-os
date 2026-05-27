@@ -24,6 +24,7 @@ services:
       LOG_LEVEL: info
       CORS_ORIGIN: "*"
       WS_MAX_CONNECTIONS: 50
+      FINMIND_TOKEN: ${FINMIND_TOKEN:-}
     depends_on:
       redis:
         condition: service_healthy

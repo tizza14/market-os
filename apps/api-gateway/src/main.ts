@@ -15,6 +15,7 @@ const EnvSchema = z.object({
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
   CORS_ORIGIN: z.string().default('*'),
   WS_MAX_CONNECTIONS: z.coerce.number().default(50),
+  FINMIND_TOKEN: z.string().default(''),
 });
 
 const env = EnvSchema.parse(process.env);
@@ -69,6 +70,7 @@ async function main(): Promise<void> {
         tradeCount: doc['tradeCount'] as number,
       }));
     },
+    finmindToken: env.FINMIND_TOKEN,
   });
 
   await app.listen({ port: env.PORT, host: '0.0.0.0' });

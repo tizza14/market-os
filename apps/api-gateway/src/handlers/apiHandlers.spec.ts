@@ -17,6 +17,7 @@ function makeDeps(overrides: Partial<AppDeps> = {}): AppDeps {
     mongoConnected: () => true,
     redisConnected: () => true,
     broadcast: mockBroadcast(),
+    finmindToken: '',
     findLatestTick: vi.fn().mockResolvedValue({
       symbol: 'BTCUSDT',
       price: '104523.45',
