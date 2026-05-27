@@ -37,16 +37,24 @@
     </div>
 
     <!-- 股票資訊列 -->
-    <div v-if="store.klines.length" class="mb-4 flex items-baseline gap-4">
-      <span class="text-lg font-bold">{{ store.symbol }}</span>
-      <span class="text-2xl font-bold" :class="lastSpread >= 0 ? 'text-price-up' : 'text-price-down'">
-        {{ lastClose.toFixed(2) }}
-      </span>
-      <span class="text-sm" :class="lastSpread >= 0 ? 'text-price-up' : 'text-price-down'">
-        {{ lastSpread >= 0 ? '+' : '' }}{{ lastSpread.toFixed(2) }}
-        （{{ spreadPct }}%）
-      </span>
-      <span class="text-xs text-price-flat ml-auto">{{ lastDate }}</span>
+    <div v-if="store.klines.length" class="mb-4">
+      <div class="flex items-baseline gap-3 flex-wrap">
+        <span class="text-xl font-bold">{{ store.companyName || store.symbol }}</span>
+        <span class="text-sm text-price-flat">{{ store.symbol }}</span>
+        <span v-if="store.industry" class="text-xs text-price-flat border border-border-dim rounded px-2 py-0.5">
+          {{ store.industry }}
+        </span>
+      </div>
+      <div class="flex items-baseline gap-4 mt-1">
+        <span class="text-2xl font-bold" :class="lastSpread >= 0 ? 'text-price-up' : 'text-price-down'">
+          {{ lastClose.toFixed(2) }}
+        </span>
+        <span class="text-sm" :class="lastSpread >= 0 ? 'text-price-up' : 'text-price-down'">
+          {{ lastSpread >= 0 ? '+' : '' }}{{ lastSpread.toFixed(2) }}
+          （{{ spreadPct }}%）
+        </span>
+        <span class="text-xs text-price-flat ml-auto">{{ lastDate }}</span>
+      </div>
     </div>
 
     <!-- 錯誤 -->

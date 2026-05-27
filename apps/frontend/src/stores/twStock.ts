@@ -4,8 +4,17 @@ import type { TwStockKline } from '@market-os/shared-types';
 
 const BASE = import.meta.env['VITE_API_BASE_URL'] ?? '/api';
 
+interface KlinesResponse {
+  symbol: string;
+  companyName: string;
+  industry: string;
+  data: TwStockKline[];
+}
+
 export const useTwStockStore = defineStore('twStock', () => {
   const symbol = ref('2330');
+  const companyName = ref('');
+  const industry = ref('');
   const days = ref(120);
   const klines = ref<TwStockKline[]>([]);
   const loading = ref(false);
@@ -17,8 +26,10 @@ export const useTwStockStore = defineStore('twStock', () => {
     try {
       const res = await fetch(`${BASE}/tw-stock/klines?symbol=${symbol.value}&days=${days.value}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = (await res.json()) as { data: TwStockKline[] };
+      const json = (await res.json()) as KlinesResponse;
       klines.value = json.data;
+      companyName.value = json.companyName;
+      industry.value = json.industry;
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Unknown error';
       klines.value = [];
@@ -28,10 +39,10 @@ export const useTwStockStore = defineStore('twStock', () => {
   }
 
   async function search(newSymbol: string, newDays?: number): Promise<void> {
-    symbol.value = newSymbol.trim().toUpperCase();
+    symbol.value = newSymbol.trim();
     if (newDays) days.value = newDays;
     await fetchKlines();
   }
 
-  return { symbol, days, klines, loading, error, fetchKlines, search };
+  return { symbol, companyName, industry, days, klines, loading, error, fetchKlines, search };
 });
