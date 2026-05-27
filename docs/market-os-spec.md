@@ -1,14 +1,15 @@
 # Market OS — 規格驅動開發文件（Spec-Driven Development）
 
-**版本：** v1.0  
-**日期：** 2026-05-25  
-**狀態：** MVP Phase 1
+**版本：** v1.2  
+**日期：** 2026-05-27  
+**狀態：** Phase 2 進行中
 
 ---
 
 ## 目錄
 
 1. [專案目標與範圍](#1-專案目標與範圍)
+20. [Phase 2 規格](#20-phase-2-規格)（新）
 2. [術語定義](#2-術語定義)
 3. [系統架構](#3-系統架構)
 4. [非功能性需求（NFR）](#4-非功能性需求nfr)
@@ -1973,4 +1974,217 @@ node_modules
 
 ---
 
-*文件版本：v1.1 | 最後更新：2026-05-25*
+---
+
+## 20. Phase 2 規格
+
+Phase 2 在 Phase 1 MVP 基礎上擴充，不破壞既有 API 合約。
+
+### 20.1 多 K 線週期（P2-1）
+
+**新增週期：** `5m`、`15m`、`1h`（原有 `1m` 不變）
+
+#### 20.1.1 後端變更
+
+**`packages/config` 新增常數：**
+
+```typescript
+export const KLINE_INTERVALS = {
+  ONE_MINUTE:      '1m',
+  FIVE_MINUTES:    '5m',
+  FIFTEEN_MINUTES: '15m',
+  ONE_HOUR:        '1h',
+} as const;
+
+export type KlineInterval = (typeof KLINE_INTERVALS)[keyof typeof KLINE_INTERVALS];
+
+export const KLINE_INTERVAL_MS: Record<string, number> = {
+  '1m':  60_000,
+  '5m':  300_000,
+  '15m': 900_000,
+  '1h':  3_600_000,
+};
+```
+
+**`klineAggregator` 函式簽名更新：**
+
+```typescript
+// calcOpenTime 新增 intervalMs 參數
+export function calcOpenTime(eventTime: number, intervalMs: number): number
+
+// createKline / aggregateTick 新增 interval / intervalMs 參數
+export function createKline(tick: MarketTick, interval: string, intervalMs: number): KlineState
+export function aggregateTick(current, tick, interval, intervalMs): KlineState
+
+// KlineAggregator 建構子新增 interval / intervalMs 參數
+new KlineAggregator(interval: string, intervalMs: number, klineRepo, logger)
+```
+
+**`market-data-service/main.ts`：** 啟動 4 個 aggregator，每筆 tick 並行寫入所有週期：
+
+```typescript
+const aggregators = Object.entries(KLINE_INTERVAL_MS).map(
+  ([interval, ms]) => new KlineAggregator(interval, ms, klineRepo, logger),
+);
+await Promise.all(aggregators.map((a) => a.initialize(SYMBOLS.BTCUSDT)));
+```
+
+**`api-gateway` queryParams 更新：**
+
+```typescript
+interval: z.enum(['1m', '5m', '15m', '1h']).default('1m')
+```
+
+#### 20.1.2 前端變更
+
+- `stores/market.ts`：新增 `selectedInterval`、`setInterval()`，`updateLatestKline` 依週期計算 openTime / closeTime
+- `DashboardView.vue`：圖表上方加入週期按鈕
+- `KlineChart.vue`：`interval` prop，1h 週期顯示日期+時間
+
+#### 20.1.3 MongoDB K 線結構（無變更）
+
+`klines` collection 已有 `interval` 欄位，多週期自然支援。複合唯一索引 `(symbol, interval, openTime)` 確保各週期獨立存儲。
+
+---
+
+### 20.2 FinMind 台股日 K 整合（P2-2 / P2-3）
+
+**資料來源：** [FinMind](https://finmindtrade.com) 公開 API（免費方案）
+
+**使用的 dataset：**
+
+| Dataset | 用途 |
+|---|---|
+| `TaiwanStockPrice` | 台股日 OHLCV 資料 |
+| `TaiwanStockInfo` | 股票代號 → 公司名稱、產業別 |
+
+#### 20.2.1 新增 API Endpoint
+
+**`GET /api/tw-stock/klines`**
+
+| 參數 | 型別 | 必填 | 預設 | 說明 |
+|---|---|---|---|---|
+| `symbol` | string | 是 | — | 台股代號，如 `2330` |
+| `days` | number | 否 | `120` | 往前幾個交易日，最大 500 |
+
+**Response 200：**
+
+```json
+{
+  "symbol": "2330",
+  "companyName": "台積電",
+  "industry": "電子工業",
+  "data": [
+    {
+      "date": "2025-05-02",
+      "stockId": "2330",
+      "open": 938,
+      "high": 950,
+      "low": 932,
+      "close": 950,
+      "spread": 42,
+      "volume": 48129292,
+      "turnover": 99509
+    }
+  ]
+}
+```
+
+**Response 400：** `VALIDATION_ERROR`（參數錯誤）
+
+**Response 502：** `UPSTREAM_ERROR`（FinMind API 不可用）
+
+#### 20.2.2 TwStockKline 型別（shared-types）
+
+```typescript
+export interface TwStockKline {
+  date: string;       // YYYY-MM-DD
+  stockId: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  spread: number;     // 漲跌金額
+  volume: number;     // 成交股數
+  turnover: number;   // 成交筆數
+}
+```
+
+#### 20.2.3 後端實作細節
+
+**代理架構（不直接暴露 Token 至前端）：**
+
+```
+瀏覽器 → GET /api/tw-stock/klines?symbol=2330
+              ↓
+         api-gateway（帶 FINMIND_TOKEN 呼叫 FinMind）
+              ↓
+         FinMind API → 回傳 TaiwanStockPrice
+```
+
+**公司名稱快取（in-memory，24h TTL）：**
+
+```typescript
+// 啟動後第一次請求時載入全部 TaiwanStockInfo
+// 後續直接從 Map<stockId, { name, industry }> 查詢
+// 每 24h 重新載入
+```
+
+#### 20.2.4 環境變數新增
+
+**api-gateway：**
+
+| 變數 | 型別 | 必填 | 說明 |
+|---|---|---|---|
+| `FINMIND_TOKEN` | string | 是 | FinMind JWT Token，從 finmindtrade.com 取得 |
+
+**docker-compose.yml：**
+
+```yaml
+api-gateway:
+  environment:
+    FINMIND_TOKEN: ${FINMIND_TOKEN:-}   # 從根目錄 .env 讀取
+```
+
+#### 20.2.5 前端新增路由與頁面
+
+| 路徑 | Component | 說明 |
+|---|---|---|
+| `/` | `DashboardView` | BTC 即時儀表板（不變） |
+| `/tw-stock` | `TwStockView` | 台股日 K 查詢 |
+
+**App.vue 頂部導覽列：** 提供「BTC 即時」和「台股日K」切換。
+
+**TwStockView 功能：**
+- 股票代號輸入框（支援 Enter 送出）
+- 60 / 120 / 240 日切換按鈕
+- 標頭顯示：公司名稱、代號、產業別標籤
+- 最新收盤價、漲跌金額、漲跌幅百分比
+- ECharts 日 K 線 + 成交量圖（風格與 BTC 一致）
+
+---
+
+### 20.3 Phase 2 測試總覽
+
+| 服務 | 測試數 | 說明 |
+|---|---|---|
+| market-data-service | 27 | 新增 5m 週期邊界測試 |
+| api-gateway | 11 | 不變 |
+| frontend | 5 | 不變 |
+| **合計** | **43** | 全通過 |
+
+---
+
+### 20.4 Phase 2 路由結構總覽
+
+```
+GET  /api/health                          （不變）
+GET  /api/market/latest                   （不變）
+GET  /api/market/klines?interval=1m|5m|15m|1h  （interval 擴展）
+GET  /api/tw-stock/klines?symbol=&days=   （新增）
+WS   /ws/market                           （不變）
+```
+
+---
+
+*文件版本：v1.2 | 最後更新：2026-05-27*
