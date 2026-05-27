@@ -204,5 +204,11 @@ packages/shared-types/src/index.ts        ✅ 新增 TwStockKline 介面
 
 | 文件 | 路徑 |
 |---|---|
-| 完整開發規格 | `docs/market-os-spec.md` |
+| 文件索引 | `docs/README.md` |
+| API 契約 | `docs/spec/api.md` |
+| 資料契約 | `docs/spec/data.md` |
+| 外部 API | `docs/spec/external.md` |
+| 系統架構 | `docs/design/architecture.md` |
+| 設計決策 | `docs/design/decisions.md` |
+| 開發流程 | `CONTRIBUTING.md`（root） |
 | 本進度記錄 | `docs/progress.md`（本文件） |

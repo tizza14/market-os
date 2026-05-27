@@ -177,8 +177,12 @@ market-os/
 │   └── config/                 # 共用常數（REDIS_CHANNELS、SYMBOLS、KLINE_INTERVALS）
 ├── docker-compose.yml
 ├── .env                        # FINMIND_TOKEN（本地，不進 git）
+├── CONTRIBUTING.md             # SDD 工作流程
 └── docs/
-    └── market-os-spec.md       # 完整規格文件
+    ├── README.md               # 文件索引
+    ├── spec/                   # 契約規格（API、Data、外部 API）
+    ├── design/                 # 架構、設計決策
+    └── progress.md             # 開發進度
 ```
 
 ---
