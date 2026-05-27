@@ -2,8 +2,8 @@ import type { MarketTick } from '@market-os/shared-types';
 import type { BinanceTrade } from '../schemas/binanceTrade.js';
 
 export interface ExtendedTick extends MarketTick {
-  buyerOrderId: number;
-  sellerOrderId: number;
+  buyerOrderId?: number;
+  sellerOrderId?: number;
 }
 
 export function formatTick(trade: BinanceTrade): ExtendedTick {
@@ -14,7 +14,7 @@ export function formatTick(trade: BinanceTrade): ExtendedTick {
     isBuyerMaker: trade.m,
     tradeId: trade.t,
     eventTime: trade.E,
-    buyerOrderId: trade.b,
-    sellerOrderId: trade.a,
+    ...(trade.b !== undefined ? { buyerOrderId: trade.b } : {}),
+    ...(trade.a !== undefined ? { sellerOrderId: trade.a } : {}),
   };
 }

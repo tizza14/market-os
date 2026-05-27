@@ -4,15 +4,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/main.ts",
+    "dev": "node --env-file=.env --import tsx/esm --watch src/main.ts",
     "build": "tsc",
     "start": "node dist/main.js",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@market-os/shared-types": "workspace:*",
-    "@market-os/config": "workspace:*",
+    "@market-os/shared-types": "*",
+    "@market-os/config": "*",
     "fastify": "5.0.0",
     "@fastify/cors": "10.0.1",
     "@fastify/rate-limit": "10.1.1",

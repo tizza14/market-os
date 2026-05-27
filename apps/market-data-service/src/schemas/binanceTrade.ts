@@ -7,8 +7,8 @@ export const BinanceTradeSchema = z.object({
   t: z.number(),
   p: z.string(),
   q: z.string(),
-  b: z.number(),
-  a: z.number(),
+  b: z.number().optional(),
+  a: z.number().optional(),
   m: z.boolean(),
 });
 
