@@ -337,3 +337,104 @@ Questions:
 ```
 
 After that, connect this idea to this project's K-line data and eventually implement a small SMA function.
+
+## Position Percentage Exercise Result
+
+Starting position:
+
+```text
+core position = 1 share
+add-on size = 20% of the original core position
+```
+
+Result:
+
+```text
+add-on shares = 1 * 20% = 0.2 shares
+total shares after add-on = 1.2 shares
+```
+
+Layered exit:
+
+| Day | State | Action | Shares sold | Shares remaining |
+|---|---|---|---:|---:|
+| Day 12: price below SMA3 but above SMA6 | Short weak, medium strong | Sell all add-on shares | 0.2 | 1.0 |
+| Day 13: price below SMA6 | Weak | Reduce 30% of the original core | 0.3 | 0.7 |
+| Day 14: price remains below SMA6 | Continued weak | Reduce 50% of the remaining core | 0.35 | 0.35 |
+
+Important distinction:
+
+```text
+30% of the original core position is different from
+50% of the remaining core position.
+```
+
+## Why SMA3 and SMA6?
+
+SMA3 and SMA6 are learning examples, not proven optimal parameters.
+
+- SMA3 reacts quickly to short-term price changes.
+- SMA6 reacts more slowly and helps separate a short pullback from continued weakness.
+- Small periods are easier to calculate by hand while learning.
+
+Real strategies should test multiple nearby parameter combinations and avoid choosing one pair only because it performed best historically.
+
+## Moving Average Buffer Zone
+
+A strategy that buys whenever price is above an SMA and sells whenever price is below it can trade too often when price moves around the SMA. This is called whipsaw.
+
+One way to reduce whipsaw is to add a percentage buffer.
+
+Example:
+
+```text
+SMA3 = 100
+buffer = 1%
+strong threshold = 100 * 1.01 = 101
+weak threshold = 100 * 0.99 = 99
+```
+
+Rules:
+
+```text
+close > 101: strong signal
+close < 99: weak signal
+99 <= close <= 101: no action
+```
+
+## Signal vs Position State
+
+A signal describes whether an action should happen today. A position describes how much is held after that action.
+
+```text
+signal = today's action
+position = current holdings after the action
+```
+
+When price is inside the buffer zone, `no action` means keeping the previous position. It does not mean changing the position to zero.
+
+Practice:
+
+```text
+SMA3 = 200
+buffer = 2%
+strong threshold = 204
+weak threshold = 196
+initial position = 0%
+prices = 205, 202, 197, 195, 198, 206
+```
+
+Result:
+
+| Day | Close | Signal | Position after close |
+|---|---:|---|---:|
+| 1 | 205 | Strong; buy | 100% |
+| 2 | 202 | No action | 100% |
+| 3 | 197 | No action | 100% |
+| 4 | 195 | Weak; sell | 0% |
+| 5 | 198 | No action | 0% |
+| 6 | 206 | Strong; buy | 100% |
+
+## Next Lesson
+
+Connect SMA signals and position state to this project's K-line data, then implement a small SMA function.
