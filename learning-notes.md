@@ -437,4 +437,460 @@ Result:
 
 ## Next Lesson
 
-Connect SMA signals and position state to this project's K-line data, then implement a small SMA function.
+## Calculating an SMA Series
+
+An SMA value uses the most recent `N` closing prices. Values before enough data exists should be `null`, not zero.
+
+Example:
+
+```text
+closes = [10, 12, 11, 15, 17, 16]
+period = 3
+SMA3 = [null, null, 11, 12.67, 14.33, 16]
+```
+
+The calculation window moves one day at a time:
+
+```text
+[10, 12, 11]
+    [12, 11, 15]
+        [11, 15, 17]
+            [15, 17, 16]
+```
+
+Practice result:
+
+```text
+closes = [20, 22, 21, 24, 28, 27]
+SMA3 = [null, null, 21, 22.3, 24.3, 26.3]
+```
+
+Keep the original precision during calculations and round only for display.
+
+## Turning SMA State into Actions
+
+Rules with an initial position of 0%:
+
+| Price state | Current position | Action | New position |
+|---|---:|---|---:|
+| close > SMA | 0% | Buy | 100% |
+| close > SMA | 100% | Hold | 100% |
+| close < SMA | 100% | Sell | 0% |
+| close < SMA | 0% | Observe | 0% |
+| close = SMA | Any | Keep current position | Unchanged |
+| SMA is null | Any | Do not trade | Unchanged |
+
+Important correction:
+
+```text
+A strong signal can appear on multiple consecutive days.
+Buy only when there is no current position; otherwise hold.
+```
+
+## Moving Average Crossovers
+
+Being above an SMA is a continuing state. Moving from below the SMA to above it is a crossover event.
+
+```text
+upward crossover:
+yesterday close <= yesterday SMA
+today close > today SMA
+
+downward crossover:
+yesterday close >= yesterday SMA
+today close < today SMA
+```
+
+Practice:
+
+```text
+closes = [19, 21, 22, 20, 18, 23]
+SMA =    [20, 20, 21, 21, 20, 21]
+```
+
+Result:
+
+| Day | State | Typical action |
+|---|---|---|
+| 1 | Below SMA | Observe |
+| 2 | Upward crossover | Buy |
+| 3 | Remains above SMA | Hold |
+| 4 | Downward crossover | Sell |
+| 5 | Remains below SMA | Observe |
+| 6 | Upward crossover | Buy |
+
+## Why Trend-Following Sells After a Price Drop
+
+A moving-average strategy is a trend-following strategy. It does not try to predict or sell at the exact highest price.
+
+```text
+Price remains above SMA: the trend may still continue, so hold.
+Price falls below SMA: the trend may have ended, so sell.
+```
+
+This means the strategy usually sells after price has already fallen from its peak. It accepts small losses and gives up part of an unrealized profit in exchange for the chance to capture a larger trend.
+
+Different methods use different logic:
+
+| Method | Main logic |
+|---|---|
+| Trend following | Buy after strength is confirmed; sell after weakness appears |
+| Value investing | Buy when price is below estimated value |
+| Mean reversion | Buy after an unusually large decline; sell near the average |
+| Subjective trading | Decide using news, experience, and judgment |
+
+## Avoid Mixing Strategies During a Trade
+
+A common mistake is changing strategy after entering a position:
+
+```text
+Buy because price broke above the SMA.
+Hold after the SMA fails because the stock now looks cheap.
+Continue holding because it has become a long-term investment.
+```
+
+Before buying, define:
+
+```text
+Why am I buying?
+What condition invalidates that reason?
+How much will I sell when it is invalidated?
+What is the maximum acceptable loss?
+How long do I expect to hold?
+```
+
+Core rule:
+
+```text
+The reason to buy, the reason to hold, and the rule to sell
+must belong to the same strategy.
+```
+
+## What Quantitative Trading Teaches Investors
+
+Quantitative trading is useful even without automated trading. It teaches investors to:
+
+- Evaluate risk together with return.
+- Define holding, adding, reducing, and selling rules before buying.
+- Distinguish a lower price from genuine value.
+- Judge a strategy using many trades instead of one outcome.
+- Include fees, taxes, slippage, and drawdowns.
+- Reduce emotional changes to the trading plan.
+
+The central process is:
+
+```text
+Form a hypothesis -> define rules -> test with data
+-> evaluate risk and costs -> execute with small size -> review
+```
+
+Historical results do not guarantee future performance, and a precise rule does not automatically make a profitable strategy.
+
+## Next Lesson
+
+## Trade Profit, Loss, and Costs
+
+Investors need to understand what transaction costs mean. A quantitative system must calculate them accurately for every trade.
+
+Basic formulas:
+
+```text
+buy amount = shares * buy price
+sell amount = shares * sell price
+gross profit = sell amount - buy amount
+
+total buy cost = buy amount + buy fee
+net sell amount = sell amount - sell fee - transaction tax
+net profit = net sell amount - total buy cost
+net return = net profit / total buy cost * 100%
+```
+
+Practice:
+
+```text
+Buy: 20 shares at 50
+Sell: 20 shares at 55
+Buy fee: 3
+Sell fee: 3
+Transaction tax: 5
+```
+
+Result:
+
+| Item | Calculation | Amount |
+|---|---|---:|
+| Buy amount | 20 * 50 | 1,000 |
+| Total buy cost | 1,000 + 3 | 1,003 |
+| Sell amount | 20 * 55 | 1,100 |
+| Net sell amount | 1,100 - 3 - 5 | 1,092 |
+| Gross profit | 1,100 - 1,000 | 100 |
+| Total transaction costs | 3 + 3 + 5 | 11 |
+| Net profit | 1,092 - 1,003 | 89 |
+| Net return | 89 / 1,003 * 100% | 8.87% |
+
+Important correction:
+
+```text
+Net sell amount is not profit.
+Profit must subtract the original buy cost.
+```
+
+Transaction costs can turn a strategy with positive gross profit into a losing strategy, especially when it trades frequently.
+
+## Next Lesson
+
+## Cumulative Profit and Account Balance
+
+Basic formulas:
+
+```text
+new balance = previous balance + current trade net profit
+cumulative profit = current balance - initial capital
+cumulative return = cumulative profit / initial capital * 100%
+```
+
+Practice:
+
+```text
+initial capital = 20,000
+trade profits = +1,000, -500, +2,000
+```
+
+Result:
+
+| Stage | Trade profit | Account balance |
+|---|---:|---:|
+| Initial | - | 20,000 |
+| Trade 1 | +1,000 | 21,000 |
+| Trade 2 | -500 | 20,500 |
+| Trade 3 | +2,000 | 22,500 |
+
+```text
+cumulative profit = 22,500 - 20,000 = 2,500
+cumulative return = 2,500 / 20,000 * 100% = 12.5%
+```
+
+## Compounded Returns
+
+When each trade uses the current account balance, percentage returns compound through multiplication rather than addition.
+
+```text
+new balance = previous balance * (1 + return)
+```
+
+Practice:
+
+```text
+initial capital = 20,000
+trade 1 return = +20%
+trade 2 return = -25%
+```
+
+Result:
+
+```text
+20,000 * 1.20 = 24,000
+24,000 * 0.75 = 18,000
+
+compounded return = 1.20 * 0.75 - 1 = -10%
+```
+
+Adding the percentages gives `-5%`, but the actual result is `-10%` because each percentage uses a different account balance.
+
+## Required Return After a Loss
+
+After a loss, the required return to recover is calculated from the smaller remaining balance.
+
+| Loss | Remaining capital from 100 | Return required to recover |
+|---:|---:|---:|
+| -10% | 90 | +11.1% |
+| -20% | 80 | +25% |
+| -25% | 75 | +33.3% |
+| -50% | 50 | +100% |
+
+Example:
+
+```text
+100 loses 50% -> 50 remains
+required profit = 100 - 50 = 50
+required return = 50 / 50 * 100% = 100%
+```
+
+Larger losses cause the recovery requirement to increase rapidly.
+
+## Maximum Drawdown
+
+Maximum drawdown measures the largest decline from a previous account high to a later low.
+
+```text
+drawdown = (later low - previous peak) / previous peak * 100%
+```
+
+Practice:
+
+```text
+account balances = 100, 130, 120, 104, 125
+previous peak = 130
+later low = 104
+maximum drawdown = (104 - 130) / 130 * 100% = -20%
+```
+
+Maximum drawdown is measured from the previous peak, not necessarily from the initial capital.
+
+## Selecting Strategies by Risk Limit
+
+Do not select a strategy only because it has the highest return. First remove strategies that exceed the acceptable risk limit.
+
+Example:
+
+```text
+maximum acceptable drawdown = 20%
+
+Strategy C: final return +25%, maximum drawdown -15%
+Strategy D: final return +40%, maximum drawdown -60%
+```
+
+Strategy C meets the requirement because its `15%` maximum drawdown does not exceed the `20%` risk limit. Strategy D does not meet the requirement despite its higher return.
+
+```text
+First remove strategies whose risk cannot be tolerated.
+Then compare the returns of the remaining strategies.
+```
+
+## Next Lesson
+
+## Win Rate and Expected Value
+
+Win rate only describes how frequently trades win. Expected value also considers how much winning and losing trades make or lose.
+
+```text
+win rate = winning trades / total trades
+loss rate = losing trades / total trades
+
+expected value =
+win rate * average win - loss rate * average loss
+```
+
+Practice:
+
+```text
+total trades = 20
+winning trades = 12
+losing trades = 8
+average win = 300
+average loss = 200
+```
+
+Result:
+
+```text
+win rate = 12 / 20 = 60%
+loss rate = 8 / 20 = 40%
+expected value = 60% * 300 - 40% * 200 = +100 per trade
+```
+
+## Reward-to-Risk Ratio
+
+```text
+reward-to-risk ratio = average win / average loss
+```
+
+Example:
+
+```text
+average win = 500
+average loss = 250
+reward-to-risk ratio = 500 / 250 = 2
+```
+
+A strategy can have a low win rate and still be profitable when its average win is sufficiently larger than its average loss.
+
+## Break-Even Win Rate
+
+The break-even win rate is the minimum win rate required for expected value to equal zero.
+
+```text
+break-even win rate =
+average loss / (average win + average loss)
+```
+
+Example:
+
+```text
+average win = 300
+average loss = 200
+break-even win rate = 200 / (300 + 200) = 40%
+```
+
+## Transaction Costs and Expected Value
+
+Transaction costs reduce winning trades and increase losing trades.
+
+```text
+net average win = original average win - transaction cost
+net average loss = original average loss + transaction cost
+```
+
+Practice:
+
+```text
+original average win = 400
+original average loss = 150
+transaction cost per completed trade = 50
+```
+
+Result:
+
+```text
+net average win = 400 - 50 = 350
+net average loss = 150 + 50 = 200
+
+break-even win rate before costs =
+150 / (400 + 150) = 27.27%
+
+break-even win rate after costs =
+200 / (350 + 200) = 36.36%
+```
+
+With an actual win rate of `40%`:
+
+```text
+expected value = 40% * 350 - 60% * 200 = +20 per trade
+```
+
+The strategy remains positive expectancy, but its advantage is small and could disappear if slippage or other costs are underestimated.
+
+## Expected Value Is a Long-Run Average
+
+Positive expected value does not mean every trade will make money.
+
+Practice:
+
+```text
+trade results = [-100, +300, -100, -100, +300]
+total profit = +300
+average profit per trade = +300 / 5 = +60
+win rate = 2 / 5 = 40%
+```
+
+A strategy can be profitable despite winning less than half of its trades when winning trades are larger than losing trades.
+
+## Pending Exercise: Consecutive Losses
+
+Even a positive-expectancy strategy can experience consecutive losses.
+
+```text
+probability of consecutive independent losses =
+loss rate multiplied by itself for each loss
+```
+
+Pending question, intentionally unanswered:
+
+```text
+strategy loss rate = 50%
+What is the simplified probability of three consecutive losses?
+```
+
+## Next Lesson
+
+Continue from the pending consecutive-loss exercise, then connect losing streaks to position sizing and drawdown.
