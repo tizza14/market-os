@@ -891,6 +891,112 @@ strategy loss rate = 50%
 What is the simplified probability of three consecutive losses?
 ```
 
+## Consecutive Losses Answer
+
+```text
+loss rate = 50%
+probability of three consecutive losses = 0.5 * 0.5 * 0.5 = 12.5%
+```
+
+On average, three consecutive losses occur once every eight trades. This is normal even for a positive-expectancy strategy.
+
+## Losing Streaks and Position Sizing
+
+The danger of consecutive losses is not the number of losses but the percentage of capital lost each time.
+
+Fixed amount vs fixed percentage:
+
+```text
+initial capital = 10,000
+fixed amount: lose 1,000 each time
+after three losses = 10,000 - 3,000 = 7,000 (down 30%)
+
+fixed percentage: lose 10% each time
+after three losses = 10,000 * 0.9 * 0.9 * 0.9 = 7,290 (down 27.1%)
+```
+
+The fixed percentage method shrinks each loss as the account shrinks, so the account can never reach zero.
+
+## Kelly Criterion
+
+The Kelly criterion calculates the fraction of capital to risk per trade to maximize long-run account growth.
+
+```text
+f = (win rate * odds - loss rate) / odds
+
+odds = average win / average loss
+```
+
+Practice:
+
+```text
+win rate = 60%
+loss rate = 40%
+average win = 300
+average loss = 200
+odds = 300 / 200 = 1.5
+
+f = (0.6 * 1.5 - 0.4) / 1.5
+  = (0.9 - 0.4) / 1.5
+  = 0.5 / 1.5
+  = 33.3%
+```
+
+Kelly recommends risking 33.3% of capital per trade.
+
+Practice 2:
+
+```text
+win rate = 55%
+loss rate = 45%
+average win = 400
+average loss = 300
+odds = 400 / 300 = 1.33
+
+f = (0.55 * 1.33 - 0.45) / 1.33
+  = (0.733 - 0.45) / 1.33
+  = 0.283 / 1.33
+  = 21.2%
+
+half Kelly = 21.2% / 2 = 10.6%
+```
+
+## Why Practitioners Use Half Kelly
+
+Kelly assumes win rate and odds are known precisely. Backtested numbers are historical estimates with error. Using full Kelly produces extreme volatility.
+
+| Method | Description |
+|---|---|
+| Full Kelly | Theoretical maximum; very high volatility |
+| Half Kelly | Common conservative choice |
+| Fixed 1–2% | Recommended for beginners |
+
+Kelly gives the upper bound, not an operating instruction.
+
+## Three Consecutive Losses Under Half Kelly
+
+```text
+account after loss 1 = 1 * (1 - 0.106) = 0.894
+account after loss 2 = 0.894 * (1 - 0.106) = 0.799
+account after loss 3 = 0.799 * (1 - 0.106) = 0.714
+
+cumulative loss = 1 - 0.714 = 28.6%
+```
+
+To recover from 28.6% loss:
+
+```text
+required return = 28.6 / 71.4 = 40%
+```
+
+## Position Sizing: Three Core Numbers
+
+| Number | Purpose |
+|---|---|
+| Kelly fraction | Theoretical maximum; do not use directly |
+| Half Kelly | Practical starting point |
+| Maximum loss per trade % | Set in advance; consecutive losses must stay within tolerable limit |
+
 ## Next Lesson
 
-Continue from the pending consecutive-loss exercise, then connect losing streaks to position sizing and drawdown.
+Stop-loss design: fixed amount, fixed percentage, and ATR-based stops.
